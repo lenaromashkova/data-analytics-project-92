@@ -3,15 +3,14 @@ SELECT COUNT(*) AS customers_count
 FROM customers;
 
 -- Показывает 10 продавцов с наибольшей общей выручкой
-
 SELECT
     e.first_name || ' ' || e.last_name AS seller,
     COUNT(*) AS operations,
     FLOOR(SUM(s.quantity * p.price)) AS income
-FROM sales s
-JOIN employees e
+FROM sales AS s
+INNER JOIN employees AS e
     ON s.sales_person_id = e.employee_id
-JOIN products p
+INNER JOIN products AS p
     ON s.product_id = p.product_id
 GROUP BY
     e.employee_id,
@@ -20,15 +19,16 @@ GROUP BY
 ORDER BY income DESC
 LIMIT 10;
 
--- Отчет с продавцами, чья средняя выручка за сделку ниже средней по всем продавцам
-WITH seller_income AS (
+-- Отчет с продавцами,
+-- чья средняя выручка за сделку ниже средней по всем продавцам
+WITH seller_stats AS (
     SELECT
         e.first_name || ' ' || e.last_name AS seller,
         SUM(s.quantity * p.price) / COUNT(*) AS average_income
-    FROM sales s
-    JOIN employees e
+    FROM sales AS s
+    INNER JOIN employees AS e
         ON s.sales_person_id = e.employee_id
-    JOIN products p
+    INNER JOIN products AS p
         ON s.product_id = p.product_id
     GROUP BY
         e.employee_id,
@@ -37,23 +37,25 @@ WITH seller_income AS (
 )
 
 SELECT
-    seller,
-    FLOOR(average_income) AS average_income
-FROM seller_income
-WHERE average_income < (
-    SELECT AVG(average_income)
-    FROM seller_income
+    seller_stats.seller,
+    FLOOR(seller_stats.average_income) AS average_income
+FROM seller_stats
+WHERE seller_stats.average_income < (
+    SELECT AVG(si.average_income)
+    FROM seller_stats AS si
 )
-ORDER BY average_income;
+ORDER BY seller_stats.average_income;
 
 -- Выручка продавцов по дням недели
 SELECT
     e.first_name || ' ' || e.last_name AS seller,
     LOWER(TRIM(TO_CHAR(s.sale_date, 'day'))) AS day_of_week,
     FLOOR(SUM(s.quantity * p.price)) AS income
-FROM sales s
-JOIN employees e ON s.sales_person_id = e.employee_id
-JOIN products p ON s.product_id = p.product_id
+FROM sales AS s
+INNER JOIN employees AS e
+    ON s.sales_person_id = e.employee_id
+INNER JOIN products AS p
+    ON s.product_id = p.product_id
 GROUP BY
     seller,
     day_of_week,
@@ -74,7 +76,7 @@ FROM (
             ELSE '40+'
         END AS age_category
     FROM customers
-) t
+) AS t
 GROUP BY age_category
 ORDER BY age_category;
 
@@ -83,8 +85,8 @@ SELECT
     TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,
     COUNT(DISTINCT s.customer_id) AS total_customers,
     FLOOR(SUM(s.quantity * p.price)) AS income
-FROM sales s
-JOIN products p
+FROM sales AS s
+INNER JOIN products AS p
     ON s.product_id = p.product_id
 GROUP BY
     TO_CHAR(s.sale_date, 'YYYY-MM')
@@ -104,15 +106,17 @@ SELECT DISTINCT ON (c.customer_id)
     c.first_name || ' ' || c.last_name AS customer,
     s.sale_date,
     e.first_name || ' ' || e.last_name AS seller
-FROM first_dates fd
-JOIN sales s
+FROM first_dates AS fd
+INNER JOIN sales AS s
     ON fd.customer_id = s.customer_id
-   AND fd.first_sale_date = s.sale_date
-JOIN customers c
+        AND fd.first_sale_date = s.sale_date
+INNER JOIN customers AS c
     ON s.customer_id = c.customer_id
-JOIN employees e
+INNER JOIN employees AS e
     ON s.sales_person_id = e.employee_id
-JOIN products p
+INNER JOIN products AS p
     ON s.product_id = p.product_id
 WHERE p.price = 0
-ORDER BY c.customer_id, s.sales_id;
+ORDER BY
+    c.customer_id,
+    s.sales_id;
