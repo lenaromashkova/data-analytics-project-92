@@ -13,7 +13,6 @@ INNER JOIN employees AS e
 INNER JOIN products AS p
     ON s.product_id = p.product_id
 GROUP BY
-    e.employee_id,
     e.first_name,
     e.last_name
 ORDER BY income DESC
@@ -24,7 +23,7 @@ LIMIT 10;
 WITH seller_stats AS (
     SELECT
         e.first_name || ' ' || e.last_name AS seller,
-        SUM(s.quantity * p.price) / COUNT(*) AS average_income
+        AVG(s.quantity * p.price) AS average_income
     FROM sales AS s
     INNER JOIN employees AS e
         ON s.sales_person_id = e.employee_id
@@ -94,29 +93,26 @@ ORDER BY
     selling_month;
 
 -- Покупатели, первая покупка которых была совершена по акционному товару
-WITH first_dates AS (
-    SELECT
-        customer_id,
-        MIN(sale_date) AS first_sale_date
-    FROM sales
-    GROUP BY customer_id
-)
-
-SELECT DISTINCT ON (c.customer_id)
-    c.first_name || ' ' || c.last_name AS customer,
-    s.sale_date,
-    e.first_name || ' ' || e.last_name AS seller
-FROM first_dates AS fd
-INNER JOIN sales AS s
-    ON fd.customer_id = s.customer_id
-        AND fd.first_sale_date = s.sale_date
-INNER JOIN customers AS c
-    ON s.customer_id = c.customer_id
-INNER JOIN employees AS e
-    ON s.sales_person_id = e.employee_id
-INNER JOIN products AS p
-    ON s.product_id = p.product_id
-WHERE p.price = 0
-ORDER BY
-    c.customer_id,
-    s.sales_id;
+SELECT
+    first_sales.customer,
+    first_sales.sale_date,
+    first_sales.seller
+FROM (
+    SELECT DISTINCT ON (s.customer_id)
+        c.first_name || ' ' || c.last_name AS customer,
+        s.sale_date,
+        e.first_name || ' ' || e.last_name AS seller,
+        p.price
+    FROM sales AS s
+    INNER JOIN customers AS c
+        ON s.customer_id = c.customer_id
+    INNER JOIN employees AS e
+        ON s.sales_person_id = e.employee_id
+    INNER JOIN products AS p
+        ON s.product_id = p.product_id
+    ORDER BY
+        s.customer_id,
+        s.sale_date,
+        s.sales_id
+) AS first_sales
+WHERE first_sales.price = 0;
